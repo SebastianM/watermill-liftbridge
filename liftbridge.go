@@ -20,9 +20,9 @@ func (p *PubSub) Subscribe(ctx context.Context, topic string) (<-chan *message.M
 	if err := p.ensureStreamExists(topic); err != nil {
 		return nil, err
 	}
-	c := make(<-chan *message.Message)
+	c := make(chan *message.Message)
 	err := p.client.Subscribe(context.Background(), topic+"-stream", func(msg *liftbridge.Message, err error) {
-		message.NewMessage(string(msg.Headers()["watermillUUID"]), msg.Value())
+		c <- message.NewMessage(string(msg.Headers()["watermillUUID"]), msg.Value())
 	})
 	return c, err
 }
