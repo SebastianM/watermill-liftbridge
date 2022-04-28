@@ -52,7 +52,7 @@ func (p *PubSub) Publish(topic string, messages ...*message.Message) error {
 		return err
 	}
 	for _, m := range messages {
-		if _, err := p.client.Publish(context.Background(), topic, m.Payload, liftbridge.AckPolicyLeader(), liftbridge.Header("watermillUUID", []byte(m.UUID))); err != nil {
+		if _, err := p.client.Publish(context.Background(), topic+"-stream", m.Payload, liftbridge.AckPolicyLeader(), liftbridge.Header("watermillUUID", []byte(m.UUID))); err != nil {
 			return err
 		}
 	}
