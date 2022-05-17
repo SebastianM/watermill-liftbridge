@@ -138,7 +138,7 @@ func (s *ConsumerGroupSubscriber) Subscribe(ctx context.Context, topic string) (
 		return nil, fmt.Errorf("cannot create liftbridge consumer: %w", err)
 	}
 
-	consumer.Subscribe(ctx, []string{topic + "-stream"}, func(msg *liftbridge.Message, err error) {
+	err = consumer.Subscribe(ctx, []string{topic + "-stream"}, func(msg *liftbridge.Message, err error) {
 		if err != nil {
 			close(c)
 			return
