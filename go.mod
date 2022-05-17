@@ -1,4 +1,4 @@
-module github.com/sebastianm/watermill-liftbridge
+module github.com/SebastianM/watermill-liftbridge
 
 go 1.18
 
