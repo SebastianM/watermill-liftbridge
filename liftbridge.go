@@ -7,6 +7,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/liftbridge-io/go-liftbridge/v2"
+	"go.uber.org/zap"
 )
 
 type Publisher struct {
@@ -104,6 +105,7 @@ type ConsumerGroupSubscriber struct {
 	subscriptionOptions []liftbridge.SubscriptionOption
 	consumerOptions     []liftbridge.ConsumerOption
 	groupID             string
+	log                 *zap.Logger
 
 	mu            sync.Mutex
 	checkedTopics map[string]struct{}
@@ -116,6 +118,7 @@ func NewConsumerGroupSubscriber(
 	groupID string,
 	subscriptionOptions []liftbridge.SubscriptionOption,
 	consumerOptions []liftbridge.ConsumerOption,
+	log *zap.Logger,
 ) *ConsumerGroupSubscriber {
 	return &ConsumerGroupSubscriber{
 		client:              client,
@@ -123,31 +126,37 @@ func NewConsumerGroupSubscriber(
 		subscriptionOptions: subscriptionOptions,
 		consumerOptions:     consumerOptions,
 		checkedTopics:       map[string]struct{}{},
+		log:                 log.With(zap.String("groupID", groupID)),
 	}
 }
 
 func (s *ConsumerGroupSubscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	s.mu.Lock()
 	if err := ensureStreamExists(s.client, topic, s.checkedTopics); err != nil {
+		s.log.Error("Could not ensure that stream exists", zap.Error(err))
 		return nil, err
 	}
 	s.mu.Unlock()
 	c := make(chan *message.Message)
 	consumer, err := s.client.CreateConsumer(s.groupID, s.consumerOptions...)
 	if err != nil {
+		s.log.Error("Could not create consumer", zap.Error(err))
 		return nil, fmt.Errorf("cannot create liftbridge consumer: %w", err)
 	}
 
 	err = consumer.Subscribe(ctx, []string{topic + "-stream"}, func(msg *liftbridge.Message, err error) {
 		if err != nil {
+			s.log.Error("Got an error inside subscriber", zap.Error(err))
 			close(c)
 			return
 		}
 		c <- message.NewMessage(string(msg.Headers()["watermillUUID"]), msg.Value())
 	})
+	s.log.Info("Error for new Subscriber is", zap.Error(err))
 	return c, err
 }
 
 func (s *ConsumerGroupSubscriber) Close() error {
+	s.log.Info("Closing subscriber")
 	return nil
 }
